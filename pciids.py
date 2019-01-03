@@ -2,6 +2,7 @@ import os
 import urllib2
 import glob
 import subprocess
+from os import path as os_path
 
 global HOME
 HOME = "https://pci-ids.ucw.cz"
@@ -97,8 +98,9 @@ class PCIIds:
         """
         self.version = ""
         self.date = ""
-        self.compressed = "pci.ids.bz2"
-        subprocess.call(['mkdir -p data'], shell=True)
+        self.filename = "pci.ids"
+        if not os.path.isdir('data'):
+            os.makedirs('data')
         self.vendors = {}
         self.contents = None
         self.loadLocal()
@@ -153,7 +155,7 @@ class PCIIds:
         """
         """
         ver, date, url = self.latestVersion()
-        outfile = "data/%s-%s" % (date, self.compressed)
+        outfile = "data/%s-%s" % (date, self.filename)
         out = open(outfile, "w")
         out.write(urllib2.urlopen(url).read())
         out.close()
@@ -167,7 +169,8 @@ class PCIIds:
         """
         Reads the local file
         """
-        self.contents = open("data/%s-pci.ids" % self.date).readlines()
+        print os_path.abspath(os_path.split(__file__)[0])
+        self.contents = open("%s/data/%s-pci.ids" % (os_path.abspath(os_path.split(__file__)[0]),self.date)).readlines()
         self.date = self.findDate(self.contents)
 
     def loadLocal(self):
@@ -175,11 +178,11 @@ class PCIIds:
         Loads database from local. If there is no file,
         it creates a new one from web
         """
-        idsfile = glob.glob("data/*.ids")
+        idsfile = glob.glob("%s/*.ids"% os_path.abspath(os_path.split(__file__)[0]))
         if len(idsfile) == 0:
             self.getLatest()
         else:
-            self.date = idsfile[0].split("/")[1].split("-")[0]
+            self.date = idsfile[0][1].split("-")[0]
             self.readLocal()
 
     def latestVersion(self):
@@ -188,14 +191,13 @@ class PCIIds:
         """
         webPage = urllib2.urlopen(HOME).readlines()
         for line in webPage:
-             if line.find(self.compressed) > -1:
+             if line.find(self.filename + '.bz2') > -1:
                 for tag in line.split("<"):
-                    if tag.find(self.compressed) > -1:
-                        path = tag.split('"')[1]
+                    if tag.find(self.filename + '.bz2') > -1:
+                        path = tag.split('"')[1].replace(".bz2","")
                         ver = path.split("/")[1]
                         url = "%s%s" % (HOME, path)
-                        urlUncompressed  = url.replace(".bz2","")
-                        con = urllib2.urlopen(urlUncompressed)
+                        con = urllib2.urlopen(url)
                         for i in range(10):
                             l = con.readline()
                             if l.find("Date:") > -1:
